@@ -151,3 +151,42 @@ saveWorkbook(wb, outfile, overwrite = TRUE)
 message("✅ Archivo Excel guardado en: ", outfile)
 
 ```
+
+## Verificación de distribuciones
+
+```{r}
+#install.packages(c("ggplot2", "dplyr", "readxl"))
+
+library(ggplot2)   # Para visualizar distribuciones
+library(dplyr)     # Para manipular datos
+library(readxl)    # Para leer archivos Excel
+```
+
+## 1. Edad
+
+```{r}
+ggplot(df, aes(x=X3)) +
+  geom_histogram(aes(y=..density..), binwidth=2, fill="skyblue", color="black", alpha=0.6) +
+  geom_density(color="darkblue", size=1.2) +
+  labs(title="Distribución de variable X3 (Edad)", x="X3 (años)", y="Densidad")
+```
+
+## 2. Frecuencia Cardiaca
+
+```{r}
+ggplot(df, aes(x=X4)) +
+  geom_histogram(aes(y=..density..), binwidth=2, fill="salmon", color="black", alpha=0.6) +
+  geom_density(color="darkred", size=1.2) +
+  labs(title="Distribución de variable X4 (Frecuencia Cardiaca)", 
+       x="X4 (lpm)", y="Densidad")
+```
+
+## 3. Ingresos Económicos
+
+```{r}
+ggplot(df, aes(x=factor(X5))) +
+  geom_bar(fill="lightgreen", color="black", alpha=0.7) +
+  labs(title="Distribución de variable X5 (Ingresos Económicos)", 
+       x="X5 (0=A,1=B,2=C,3=D,4=E)", y="Frecuencia")
+```
+
