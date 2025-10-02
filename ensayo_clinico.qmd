@@ -1,0 +1,153 @@
+---
+title: "Creación de base de datos y exportación a Excel"
+subtitle: "Bioestadística"
+author: 
+  - name: "Fabrizio Flores"
+  - name: "Julia Sagastegui"
+institute: "Profesor: Dr. Antonio M Quispe"
+format: html
+editor: visual
+---
+
+## 🚀 Reto
+
+Crear la base de datos de un **ensayo clínico aleatorizado** diseñado para evaluar en **1000 individuos** la eficacia de una dieta para bajar de peso.
+
+El estudio considera:
+
+-   **Desenlace principal:** pérdida de peso (rango: -20 a +20 kg).
+-   **Exposición:** dieta (0 = no expuestos, 1 = expuestos).
+-   **Confusores:**
+    -   Edad (18 a 60 años, con distribución de edad de la población peruana).
+    -   Género (0 = femenino, 1 = masculino).
+    -   Actividad física, medida como frecuencia cardiaca en fase 2 (rango: 70 a 150).
+    -   Nivel socioeconómico (0 = A, 1 = B, 2 = C, 3 = D, 4 = E, con distribución del NSE de la población peruana).
+
+------------------------------------------------------------------------
+
+## 🎯 Objetivo
+
+En este tutorial aprenderás a **simular un conjunto de datos ficticio** (1000 observaciones) y a **exportarlo a Excel** con dos hojas:
+
+-   **Datos**: con las variables simuladas
+-   **Metadata**: con la descripción de cada variable
+
+------------------------------------------------------------------------
+
+## 📦 Cargar librerías
+
+```{r}
+# Instalar solo una vez (desde consola, no en este script):
+# install.packages(c("truncnorm", "openxlsx"))
+
+library(truncnorm)  # Para simulación con distribución normal truncada
+library(openxlsx)   # Para crear Excel con formato
+
+```
+
+------------------------------------------------------------------------
+
+## 🔢 Simulación de variables
+
+```{r}
+set.seed(123) # Reproducibilidad
+n <- 1000     # Número de observaciones
+
+# ID
+ID <- 1:n
+
+# Desenlace: pérdida de peso (kg) entre -20 y 20
+Y <- round(rtruncnorm(n, a = -20, b = 20, mean = 0, sd = 5))
+
+# Dieta (0/1 con probabilidad 0.5)
+X1 <- rbinom(n, 1, 0.5)
+
+# Género (0=Femenino, 1=Masculino)
+X2 <- rbinom(n, 1, 0.5)
+
+# Edad (18–60, con más densidad entre 20–39)
+X3 <- sample(18:60, n, replace = TRUE,
+             prob = c(rep(0.5,2),   # 18–19
+                      rep(2.0,10),  # 20–29
+                      rep(1.8,10),  # 30–39
+                      rep(1.0,10),  # 40–49
+                      rep(0.6,11))) # 50–60
+
+# Frecuencia cardiaca (70–150 lpm, media=127.5, sd=6)
+X4 <- round(rtruncnorm(n, a = 70, b = 150, mean = 127.5, sd = 6))
+
+# Ingresos (categoría socioeconómica A–E, con C y D más frecuentes)
+X5 <- sample(0:4, n, replace = TRUE, prob = c(0.05,0.10,0.40,0.30,0.15))
+
+# Dataset final
+df <- data.frame(ID, Y, X1, X2, X3, X4, X5)
+
+# Vista preliminar
+head(df)
+
+```
+
+------------------------------------------------------------------------
+
+## 📝 Metadata de las variables
+
+```{r}
+metadata <- data.frame(
+  Variables = c("ID", "Y", "X1", "X2", "X3", "X4", "X5"),
+  
+  Etiqueta = c("Identificador único","Pérdida de peso","Dieta","Género","Edad","Frecuencia cardiaca","Ingresos económicos"),
+  
+  Tipo = c("Integer","Integer","Binary","Binary","Integer","Integer","Ordinal"),
+  
+  Valores_permitidos = c("1–1000 (único)","-20 a +20 (kg)","0=No,1=Sí","0=F,1=M","18–60","70–150 (lpm)","0=A,1=B,2=C,3=D,4=E"),
+  
+  Unidades = c("N/A","kg","N/A","N/A","años","latidos/minuto","Categoría"),
+  
+  Origen = c("Asignado secuencialmente","Normal truncada","Aleatorio p=0.5","Aleatorio p=0.5","Muestreo ponderado","Normal truncada media=127.5","Distribución socioeconómica Perú"),
+  
+  Rol = c("Identificador","Variable de desenlace","Exposición","Covariable","Covariable","Covariable fisiológica","Covariable socioeconómica"),
+  
+  stringsAsFactors = FALSE
+)
+
+metadata
+
+```
+
+------------------------------------------------------------------------
+
+## 📊 Exportar a Excel
+
+```{r}
+# Crear workbook
+wb <- createWorkbook()
+
+# Estilo encabezados
+header_style <- createStyle(
+  fontSize = 12, fontColour = "white", fgFill = "#4F81BD",
+  halign = "center", textDecoration = "bold", border = "Bottom"
+)
+
+# Estilo cuerpo
+body_style <- createStyle(fontSize = 10, border = "TopBottomLeftRight")
+
+# Hoja de datos
+addWorksheet(wb, "Datos")
+writeData(wb, "Datos", df, headerStyle = header_style)
+addStyle(wb, "Datos", body_style, rows = 2:(n+1), cols = 1:ncol(df), gridExpand = TRUE)
+setColWidths(wb, "Datos", cols = 1:ncol(df), widths = "auto")
+
+# Hoja de metadata
+addWorksheet(wb, "Metadata")
+writeData(wb, "Metadata", metadata, headerStyle = header_style)
+addStyle(wb, "Metadata", body_style, rows = 2:(nrow(metadata)+1), cols = 1:ncol(metadata), gridExpand = TRUE)
+setColWidths(wb, "Metadata", cols = 1:ncol(metadata), widths = "auto")
+
+# Guardar archivo
+outfile <- file.path(getwd(), "simulated.xlsx")
+if (file.exists(outfile)) unlink(outfile)
+saveWorkbook(wb, outfile, overwrite = TRUE)
+
+message("✅ Archivo Excel guardado en: ", outfile)
+
+```
